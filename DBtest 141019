@@ -1,0 +1,69 @@
+--https://gist.github.com/ms32035/c0c4cf45862b6eef154b39227947e2b4
+--install docker
+-- run in powershell
+-- docker run -it -p 5432:5432 ms32035/dbtest
+-- use DBeaver to connect using host: localhost un:postgres pw:'' port:5432
+
+--Task 1
+--Write a SQL query calculating sales volume (sum(sales_amount)) aggregated by country and customer age groups. 
+=--Age groups should be for every 10 years, i.e. 0-9, 10-19, ...
+
+--postgres sql
+select country,
+case when age>=0 and age<10 then '0-9'
+when age>=10 and age<20 then '10-19'
+when age>=20 and age<30 then '20-29'
+when age>=30 and age<40 then '30-39'
+when age>=40 and age<50 then '40-49'
+when age>=50 and age<60 then '50-59'
+when age>=60 and age<70 then '60-69'
+when age>=70 and age<80 then '70-79'
+when age>=80 and age<90 then '80-89'
+when age>=90 and age<100 then '90-99'
+when age>=100 and age<110 then '100-109'
+else '110+'
+end as age,
+(sum(sales_amount)) as sales_amount
+
+from test.f_sales a
+left join test.d_agent b
+on a.agent_id=b.agent_id
+left join (select customer_id, country, extract(year from age(c.dob,now())) as age  from test.d_customer c) c
+on a.customer_id=c.customer_id
+group by 1,2;
+
+--Task 2
+--Calculate the total amount of commision paid sum(commission_percent * sales_amount) assuming that commission is also paid for every agent up in the hierarchy tree. For example, if in the sales record agent_id=10 the IDs of agents receiving commission are: 10,5,2,1,0 with --rates corresponding to sales dates.
+
+select a.agent_id,
+sum(commission_percent * sales_amount) as commision
+
+from test.f_sales a
+left join test.d_agent b
+on a.agent_id=b.agent_id
+and sales_date>=start_date and sales_date<end_date
+group by 1;
+
+--Task 3
+--Propose a design of a new table which would simplify calculations such as in Task 2. Assume an arbitrary maximum number of levels.
+
+--Table sales commision
+create table test.sales_commision
+
+select a.agent_id,
+sales_date,
+parent_agent_id,
+commission_percent,
+sales_amount,
+commission_percent * sales_amount as commision
+
+from test.f_sales a
+left join test.d_agent b
+on a.agent_id=b.agent_id
+and sales_date>=start_date and sales_date<end_date;
+
+
+
+
+
+
